@@ -1,0 +1,14 @@
+# Normalize line endings across platforms
+* text=auto
+
+# Shell scripts must stay LF (CRLF breaks them on Linux/macOS)
+*.sh      text eol=lf
+
+# Windows scripts
+*.cmd     text eol=crlf
+*.bat     text eol=crlf
+
+# Docs / markup
+*.md      text eol=lf
+*.html    text eol=lf
+LICENSE   text eol=lf

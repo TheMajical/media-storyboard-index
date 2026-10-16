@@ -1,0 +1,8 @@
+# Generated index output (never commit your media index)
+_index/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

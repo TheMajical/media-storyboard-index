@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__ - media index</title>
+<style>
+ body{background:#14161a;color:#e6e6e6;font:14px/1.45 system-ui,Segoe UI,Arial;margin:0;padding:16px}
+ h1{font-size:18px;margin:0 0 4px}
+ .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:sticky;top:0;background:#14161a;padding:8px 0;border-bottom:1px solid #2a2e35;z-index:5}
+ input,select{background:#1e2229;color:#e6e6e6;border:1px solid #333a44;border-radius:6px;padding:7px 9px}
+ input{flex:1;min-width:220px}
+ .count{color:#8b94a3}
+ .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:14px}
+ .card{background:#1b1f26;border:1px solid #2a2e35;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+ .thumb{aspect-ratio:16/9;background:#0d0f12 center/400% 200% no-repeat;cursor:crosshair;position:relative}
+ .thumb::after{content:"hover to preview";position:absolute;left:6px;bottom:6px;font-size:10px;color:#cfd6e0;background:rgba(0,0,0,.55);padding:1px 6px;border-radius:4px;opacity:.85}
+ .thumb.playing::after{content:"preview";color:#9ef0b4}
+ .meta{padding:8px}
+ .nm{font-size:12px;word-break:break-word;color:#dfe4ea;margin-bottom:4px}
+ .tag{display:inline-block;background:#262b33;color:#9aa4b2;border-radius:4px;padding:1px 5px;font-size:11px;margin:0 4px 4px 0}
+ .id{color:#6ea8fe;font-weight:600;font-size:11px}
+ .new{background:#1e3a26;color:#7ee2a8}
+ .pathrow{display:flex;gap:6px;align-items:center;margin-top:4px}
+ .path{flex:1;font-size:11px;color:#8b94a3;background:#11141a;border:1px solid #262b33;border-radius:5px;padding:3px 6px;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left}
+ .copy{background:#262b33;color:#9aa4b2;border:1px solid #333a44;border-radius:5px;padding:3px 7px;font-size:11px;cursor:pointer}
+ .copy:hover{color:#fff}
+</style></head><body>
+<h1>__TITLE__ &mdash; media index</h1>
+<div class="bar">
+ <input id="q" placeholder="filter by name / folder / id / resolution / path ...">
+ <select id="sort">
+  <option value="IDdesc">sort: newest first</option>
+  <option value="ID">sort: id</option>
+  <option value="Name">sort: name</option>
+  <option value="Folder">sort: folder</option>
+  <option value="SizeMB">sort: size</option>
+  <option value="Duration">sort: duration</option>
+ </select>
+ <select id="speed">
+  <option value="1200">preview: slow</option>
+  <option value="700" selected>preview: normal</option>
+  <option value="450">preview: fast</option>
+  <option value="300">preview: very fast</option>
+ </select>
+ <span class="count" id="count"></span>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+const DATA = __DATA__;
+const COLS = __COLS__, ROWS = __ROWS__, N = COLS*ROWS;
+let SPEED = __SPEED__;
+const grid=document.getElementById('grid'), q=document.getElementById('q'),
+      sort=document.getElementById('sort'), count=document.getElementById('count'),
+      speed=document.getElementById('speed');
+function pos(k){const c=k%COLS,r=Math.floor(k/COLS);const x=COLS>1?c/(COLS-1)*100:0,y=ROWS>1?r/(ROWS-1)*100:0;return x+'% '+y+'%';}
+function esc(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function render(){
+ const term=q.value.toLowerCase();
+ let list=DATA.filter(d=>!term||(d.Name+' '+d.Folder+' '+d.ID+' '+d.Resolution+' '+d.Path).toLowerCase().includes(term));
+ const s=sort.value;
+ if(s==='IDdesc') list.sort((a,b)=>b.ID.localeCompare(a.ID)); else list.sort((a,b)=>(a[s]>b[s])-(a[s]<b[s]));
+ count.textContent=list.length+' / '+DATA.length+' items';
+ grid.innerHTML=list.map(d=>`
+  <div class="card">
+    <div class="thumb" style="background-image:url('${d.Sprite}')"></div>
+    <div class="meta">
+      <div class="id">#${d.ID}${d.Added?' <span class="tag new">added '+esc(d.Added)+'</span>':''}</div>
+      <div class="nm">${esc(d.Name)}</div>
+      <span class="tag">${esc(d.Folder)||'root'}</span>
+      ${d.Duration?`<span class="tag">${esc(d.Duration)}</span>`:''}
+      ${d.Resolution?`<span class="tag">${esc(d.Resolution)}</span>`:''}
+      <span class="tag">${d.SizeMB} MB</span>
+      ${d.NameDate?`<span class="tag">~${esc(d.NameDate)}</span>`:''}
+      <div class="pathrow">
+        <div class="path" title="${esc(d.Path)}">${esc(d.Path)}</div>
+        <button class="copy" data-p="${esc(d.Path)}">copy</button>
+      </div>
+    </div>
+  </div>`).join('');
+ bindThumbs();
+}
+function bindThumbs(){
+ document.querySelectorAll('.thumb').forEach(el=>{
+   el.style.backgroundSize=(COLS*100)+'% '+(ROWS*100)+'%';
+   el.style.backgroundPosition=pos(0);
+   let k=0;
+   el.addEventListener('mouseenter',()=>{
+     k=0; el.classList.add('playing');
+     const tick=()=>{ k=(k+1)%N; el.style.backgroundPosition=pos(k); el._t=setTimeout(tick,SPEED); };
+     el._t=setTimeout(tick,SPEED);
+   });
+   el.addEventListener('mouseleave',()=>{
+     if(el._t){clearTimeout(el._t);el._t=null;}
+     el.classList.remove('playing'); el.style.backgroundPosition=pos(0);
+   });
+ });
+ document.querySelectorAll('.copy').forEach(b=>{
+   b.addEventListener('click',()=>{
+     navigator.clipboard.writeText(b.dataset.p).then(()=>{b.textContent='copied';setTimeout(()=>b.textContent='copy',900);});
+   });
+ });
+}
+q.addEventListener('input',render); sort.addEventListener('change',render);
+speed.addEventListener('change',()=>{SPEED=parseInt(speed.value,10);});
+render();
+</script>
+</body></html>
